@@ -6,7 +6,7 @@ View application to make collected data look better.
 First of all, you need a Season spreadsheet like this: https://docs.google.com/spreadsheets/d/1P-hVIAbM4jcThP8JO3Nqf_qSqGAPx7UdvxFTEhL_vp4/edit#gid=0
 and then you need a Event spreadsheet/s depending on how many you have like this: https://docs.google.com/spreadsheets/d/12ZsC_extanuhWRqS6z83bLXtEwW9sn9LGZFs51qoRP0/edit#gid=1450556730
 
-Now that you have the spreadsheets (or made copies of them) you have to change the scripts of them. First of all lets look at the SoL | S2 E1 spreadsheet script. It contains this:
+Now that you have the spreadsheets (or made copies of them) you have to change the scripts of them. First of all lets look at the SoL | S2 E1 spreadsheet script. It contains this script, where we edit the values in "var data", and if you host it on another url, then change the ip at "var response":
 
 ```
 var data = {
@@ -754,5 +754,320 @@ function onOpen(event) {
 }
 ```
 
-In there you have to edit "wrc" and "mastersheet".
-Inside the Event spreadsheet, under the Data tab, you have to insert EventID on the right cell.
+In the Season spreadsheet, this script is used, here is also values from "var data" and "function parseClass":
+
+```
+var data = {
+  ralliesListPage: "Rally",
+  wrc: "Rally",
+};
+
+var rallies = [];
+
+var drivers = {
+  wrc: {},
+};
+
+var nicks = {};
+
+var teams = {
+  wrc: {},
+};
+
+function startUpdating() {
+  var triggers = ScriptApp.getProjectTriggers();
+  if(triggers.length > 0) {
+    return;
+  }
+  
+  ScriptApp.newTrigger("updateStats").timeBased().everyMinutes(30).create();
+}
+
+function stopUpdating() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
+  }
+}
+
+function parseClass(name) {
+  switch(name) {
+    case "Rally":
+      return "wrc";
+    default:
+      throw new Error("Could not parse class from '" + name + "'");
+  }
+}
+
+var unknownDrivers = [];
+
+function updateStats() {
+  getRallies();
+  getDrivers();
+  getTeams();
+  
+  parseRallies();
+  
+  printResults();
+  
+  printUnknownDrivers();
+  
+  //var testValue = driverComparator(this.drivers.wrc["Ahto Järv"], this.drivers.wrc["Jan Torn"]);
+  
+  var foo = false;
+}
+
+function printUnknownDrivers() {
+  var rows = [];
+  this.unknownDrivers.map(function(driver) {
+    rows.push([driver]);
+  });
+  var page = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Data");
+  page.getRange(2, 1, page.getMaxRows() - 1).clearContent();
+  if(this.unknownDrivers.length > 0) {
+    page.getRange(2, 1, this.unknownDrivers.length).setValues(rows);
+  }
+}
+
+function printResults() {
+  for(var class in this.drivers) {
+    var page = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(this.data[class]);
+    var driverArray = createResultArray(this.drivers[class]).sort(driverComparator);
+    var teamArray = createResultArray(this.teams[class]).sort(driverComparator);
+    
+    var driverOutput = [];
+    var teamOutput = [];
+    
+    driverArray.map(driverPrinter.bind(this, driverOutput));
+    teamArray.map(driverPrinter.bind(this, teamOutput));
+    
+    page.getRange(2, 1, page.getMaxRows() - 1, this.rallies.length + 3).clearContent();
+    if(driverOutput.length > 0) {
+      page.getRange(2, 1, driverOutput.length, this.rallies.length + 3).setValues(driverOutput);
+    }
+    page.getRange(2, this.rallies.length + 5, page.getMaxRows() - 1, this.rallies.length + 3).clearContent();
+    if(teamOutput.length > 0) {
+      page.getRange(2, this.rallies.length + 5, teamOutput.length, this.rallies.length + 3).setValues(teamOutput);
+    }
+  }
+}
+
+function driverPrinter(output, driver, index) {
+  var result = [
+    index + 1,
+    driver.name
+  ];
+  for(var i in this.rallies) {
+    if(typeof driver.scores[this.rallies[i]] === "undefined") {
+      result.push("");
+    } else {
+      result.push(driver.scores[this.rallies[i]]);
+    }
+  }
+  if(driver.totalScore === null) {
+    result.push("");
+  } else {
+    result.push(driver.totalScore);
+  }
+  output.push(result);
+}
+
+function createResultArray(series) {
+  var results = [];
+  Object.keys(series).map(function(key) {
+    results.push(series[key]);
+  });
+  return results;
+}
+
+function addUnknown(name) {
+  if(this.unknownDrivers.indexOf(name) === -1) {
+    this.unknownDrivers.push(name);
+  }
+}
+
+function parseRallies() {
+  for(var class in this.drivers) {
+    var page = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(this.data[class]);
+    var data = page.getRange(2, 25, page.getMaxRows() - 1, page.getMaxColumns() - 24).getValues();
+    
+    data.map(function(row) {
+      for(var j = 0; j < row.length / 4; j++) {
+        var colNum = j * 4;
+        if(row[colNum].length > 0) {
+          var name = row[colNum];
+          var score = row[colNum + 1];
+          
+          if(typeof this.nicks[name] !== "undefined") {
+            var driver = this.nicks[name];
+            if(driver.class == class) {
+              driver.scores[this.rallies[j]] = score;
+              if(typeof score === "number") {
+                driver.totalScore += score;
+              }
+            }
+          } else {
+            addUnknown(name);
+          }
+        }
+        if(row[colNum + 2].length > 0) {
+          var teamName = row[colNum + 2];
+          var teamScore = row[colNum + 3];
+          
+          if(typeof this.teams[class][teamName] !== "undefined") {
+            var team = this.teams[class][teamName];
+            team.scores[this.rallies[j]] = teamScore;
+            team.totalScore += teamScore;
+          }
+        }
+      }
+    });
+  }
+}
+
+function getRallies() {
+  var page = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(this.data.ralliesListPage);
+  var data = page.getRange(1, 3, 1, 6).getValues();
+  data[0].map(function(rally) {
+    this.rallies.push(rally);
+  });
+}
+
+function getDrivers() {
+  var page = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Drivers");
+  var data = page.getRange(2, 1, page.getLastRow() - 1, page.getLastColumn()).getValues();
+  
+  data.map(function(driver) {
+    if(driver[0].length === 0) {
+      return;
+    }
+    var driverData = {
+      name: driver[0],
+      class: parseClass(driver[1]),
+      scores: {},
+      totalScore: null
+    };
+    
+    this.drivers[parseClass(driver[1])][driverData.name] = driverData;
+    var nickList = driver.slice(2);
+    nickList.map(function(nick) {
+      if(nick.length > 0) {
+        this.nicks[nick] = driverData;
+      }
+    });
+  });
+}
+
+function getTeams() {
+  var page = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Teams");
+  var data = page.getRange(2, 1, page.getLastRow() - 1, 2).getValues();
+  
+  data.map(function(team) {
+    if(team[0].length > 0) {
+      this.teams[parseClass(team[1])][team[0]] = {
+        name: team[0],
+        scores: {},
+        totalScore: null
+      }
+    }
+  });
+}
+
+function driverComparator(driver1, driver2) {
+  // One or both drivers have no score at all
+  if(driver1.totalScore === null && driver2.totalScore === null) {
+    return driver1.name.localeCompare(driver2.name);
+  }
+  if(driver1.totalScore === null) {
+    return 1;
+  }
+  if(driver2.totalScore === null) {
+    return -1;
+  }
+  
+  // One or the other has a higher score
+  if(driver1.totalScore - driver2.totalScore !== 0) {
+    return driver2.totalScore - driver1.totalScore;
+  }
+  
+  var driver1Scores = createScoreList(driver1);
+  var driver2Scores = createScoreList(driver2);
+  
+  var scoreListResult = compareScoreLists(driver1Scores, driver2Scores);
+  if(scoreListResult === 0) {
+    return driver1.name.localeCompare(driver2.name);
+  }
+  return scoreListResult;
+}
+
+function createScoreList(driver) {
+  var driverScores = [];
+  var i = null;
+  for(i in driver.scores) {
+    if(typeof driver.scores[i] === "number") {
+      driverScores.push(driver.scores[i]);
+    }
+  }
+  driverScores.sort();
+  var driverScoresList = {};
+  for(i in driverScores) {
+    if(typeof driverScoresList[driverScores[i]] !== "undefined") {
+      driverScoresList[driverScores[i]]++;
+    } else {
+      driverScoresList[driverScores[i]] = 1;
+    }
+  }
+  return driverScoresList;
+}
+
+function compareScoreLists(list1, list2) {
+  var uniqueScores = [];
+  Object.keys(list1).map(function(key) {
+    key = parseInt(key, 10);
+    if(uniqueScores.indexOf(key) === -1) {
+      uniqueScores.push(key);
+    }
+  });
+  Object.keys(list2).map(function(key) {
+    key = parseInt(key, 10);
+    if(uniqueScores.indexOf(key) === -1) {
+      uniqueScores.push(key);
+    }
+  });
+  uniqueScores.sort(function(a,b){return a - b}).reverse();
+  for(var i in uniqueScores) {
+    if(typeof list1[uniqueScores[i]] === "undefined" && typeof list2[uniqueScores[i]] === "undefined")
+      continue;
+    if(typeof list1[uniqueScores[i]] === "undefined")
+      return 1;
+    if(typeof list2[uniqueScores[i]] === "undefined")
+      return -1;
+    
+    return list2[uniqueScores[i]] - list1[uniqueScores[i]];
+  }
+  
+  return 0;
+}
+
+function onOpen(event) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var menuEntries = [
+    {
+      name: "Update Overall",
+      functionName: "updateStats"
+    },
+    {
+      name: "Start Automatic Update",
+      functionName: "startUpdating"
+    },
+    {
+      name: "Stop Automatic Update",
+      functionName: "stopUpdating"
+    }
+  ];
+  ss.addMenu("Extra Menu", menuEntries);
+}
+```
+
+In the Season spreadsheet, you need to add Drivers, Teams, Points & Classes.
+In the Event spreadsheet, you also need Driver, Classes & Data tab. Under the Data, you insert the event ID which the API uses to find the league.
