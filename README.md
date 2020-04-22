@@ -754,4 +754,5 @@ function onOpen(event) {
 }
 ```
 
-In there I have to edit
+In there you have to edit "wrc" and "mastersheet".
+Inside the Event spreadsheet, under the Data tab, you have to insert EventID on the right cell.
