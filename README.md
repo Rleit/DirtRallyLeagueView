@@ -2,6 +2,26 @@
 View application to make collected data look better.
 
 
+### Front End Setup
+
+# First clone this git,
+
+# Go into src
+`cd src`
+
+# Install all dependencies
+`npm install `
+
+# Serve with hot reload at localhost:3000 for development purposes
+` npm run dev`
+
+# Build for production and launch server
+` npm run build`
+` npm run start`
+
+# Generate static project to be uploaded
+` npm run generate`
+
 # How the spreadsheet way works
 First of all, you need a Season spreadsheet like this: https://docs.google.com/spreadsheets/d/1P-hVIAbM4jcThP8JO3Nqf_qSqGAPx7UdvxFTEhL_vp4/edit#gid=0
 and then you need a Event spreadsheet/s depending on how many you have like this: https://docs.google.com/spreadsheets/d/12ZsC_extanuhWRqS6z83bLXtEwW9sn9LGZFs51qoRP0/edit#gid=1450556730
