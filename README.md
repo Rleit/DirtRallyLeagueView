@@ -4,22 +4,22 @@ View application to make collected data look better.
 
 ### Front End Setup
 
-# First clone this git,
+First clone this git,
 
-# Go into src
+Go into src
 `cd src`
 
-# Install all dependencies
+Install all dependencies
 `npm install `
 
-# Serve with hot reload at localhost:3000 for development purposes
+Serve with hot reload at localhost:3000 for development purposes
 ` npm run dev`
 
-# Build for production and launch server
+Build for production and launch server
 ` npm run build`
 ` npm run start`
 
-# Generate static project to be uploaded
+Generate static project to be uploaded
 ` npm run generate`
 
 # How the spreadsheet way works
